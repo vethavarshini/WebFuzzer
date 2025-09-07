@@ -1,51 +1,75 @@
 import requests
+from pymongo import MongoClient
 
-# Common sensitive files to check
-sensitive_files = [
-    "/robots.txt",
-    "/.git/",
-    "/.htaccess",
-    "/.env"
-]
+# MongoDB Atlas connection URI
+MONGO_URI = ""
 
-def test_security_misconfiguration(url):
-    vulnerabilities = []
-
-    print("🔍 Testing for Security Misconfigurations...")
-
-    for file in sensitive_files:
-        test_url = url + file
-        try:
-            response = requests.get(test_url, timeout=5)
-
-            if response.status_code == 200:
-                print(f"❌ Exposed file found: {file}")
-                vulnerabilities.append({
-                    "type": "Security Misconfiguration",
-                    "payload": file,
-                    "recommendation": "Restrict public access to sensitive files and configure proper access control."
-                })
-
-        except requests.exceptions.RequestException:
-            print(f"⚠️ Could not connect to {test_url}. Skipping.")
-
-    # Checking Server Headers
+def get_security_misconfiguration_payloads():
+    """
+    Fetch payloads for Security Misconfiguration from MongoDB Atlas.
+    """
     try:
-        response = requests.get(url, timeout=5)
-        headers = response.headers
+        print("🔄 Connecting to MongoDB Atlas for misconfiguration payloads...")
+        client = MongoClient(MONGO_URI)
+        db = client["attack_payloads_v1"]
+        collection = db["security_misconfiguration"]
 
-        if "server" in headers:
-            server_info = headers["server"]
-            print(f"🔍 Server Header: {server_info}")
+        # Fetch payloads with category "Security Misconfiguration"
+        cursor = collection.find({"category": "Security Misconfiguration"})
 
-            if "apache/2.4.49" in server_info.lower():  # Example vulnerable version
+        payloads = []
+        for doc in cursor:
+            payloads.append({
+                "name": doc.get("name", "Unknown"),
+                "path": doc.get("path", ""),
+                "description": doc.get("description", ""),
+                "recommendation": doc.get("recommendation", "No recommendation provided.")
+            })
+
+        print(f"✅ Retrieved {len(payloads)} misconfiguration payloads.\n")
+        return payloads
+
+    except Exception as e:
+        print(f"❌ Error fetching misconfiguration payloads: {e}")
+        return []
+
+    finally:
+        if 'client' in locals():
+            client.close()
+
+def test_security_misconfiguration(base_url):
+    """
+    Test for common Security Misconfiguration issues using MongoDB payloads.
+    """
+    vulnerabilities = []
+    payloads = get_security_misconfiguration_payloads()
+
+    print("🔍 Testing for Security Misconfiguration...\n")
+
+    if not payloads:
+        print("⚠️ No misconfiguration payloads found. Skipping.\n")
+        return vulnerabilities
+
+    headers = {"User-Agent": "Mozilla/5.0"}
+
+    for payload in payloads:
+        test_url = base_url.rstrip("/") + "/" + payload["path"].lstrip("/")
+        print(f"🚀 Testing payload: {payload['name']} at {test_url}")
+
+        try:
+            response = requests.get(test_url, headers=headers, timeout=10)
+            if response.status_code == 200 and "error" not in response.text.lower():
+                print(f"❌ Potential misconfiguration found at {test_url}")
                 vulnerabilities.append({
                     "type": "Security Misconfiguration",
-                    "payload": f"Server Header: {server_info}",
-                    "recommendation": "Update to the latest secure version of your web server."
+                    "payload": test_url,
+                    "description": payload["description"],
+                    "recommendation": payload["recommendation"]
                 })
+            else:
+                print(f"✅ No issue at {test_url}")
 
-    except requests.exceptions.RequestException:
-        print("⚠️ Could not retrieve server headers.")
+        except requests.exceptions.RequestException as e:
+            print(f"❌ Request error for {test_url}: {e}")
 
     return vulnerabilities

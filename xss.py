@@ -1,32 +1,65 @@
 import requests
+from pymongo import MongoClient
+
+# MongoDB Atlas connection string
+MONGO_URI = ""
+
+def get_xss_payloads():
+    """
+    Fetch payloads for Reflected XSS from MongoDB Atlas collection.
+    """
+    try:
+        print("🔄 Connecting to MongoDB Atlas for XSS payloads...")
+        client = MongoClient(MONGO_URI)
+        db = client["attack_payloads_v1"]
+        collection = db["xss"]
+
+        # Optional debug print to confirm documents
+        count = collection.count_documents({})
+        print(f"📦 Total documents in collection: {count}")
+
+        # Correct query: Case-sensitive match on 'Reflected XSS'
+        cursor = collection.find({"category": "Reflected XSS"})
+        payloads = [doc["payload"] for doc in cursor if "payload" in doc]
+
+        print(f"✅ Retrieved {len(payloads)} XSS payloads from MongoDB.\n")
+        return payloads
+
+    except Exception as e:
+        print(f"❌ Error fetching XSS payloads: {e}")
+        return []
+
+    finally:
+        if 'client' in locals():
+            client.close()
 
 def test_xss(url):
-    xss_payloads = [
-        "<script>alert('XSS')</script>",
-        "'\"><script>alert('XSS')</script>",
-        "<img src=x onerror=alert('XSS')>",
-        "<svg/onload=alert('XSS')>",
-        "<iframe src='javascript:alert(\"XSS\")'></iframe>"
-    ]
-    
+    """
+    Tests the given URL for Reflected XSS using payloads from MongoDB.
+    """
+    xss_payloads = get_xss_payloads()
     vulnerabilities = []
-    
+
+    if not xss_payloads:
+        print("⚠️ No XSS payloads found. Skipping XSS test.\n")
+        return vulnerabilities
+
     for payload in xss_payloads:
-        test_url = f"{url}?q={payload}" # Modify this based on site input structure
+        test_url = f"{url}?q={payload}"  # Adjust parameter as needed
         print(f"  🔹 Testing payload: {payload}")
 
         try:
             response = requests.get(test_url, timeout=5)
-
             if payload in response.text:
                 vulnerabilities.append({
                     "type": "Cross-Site Scripting (XSS)",
                     "payload": payload,
-                    "recommendation": "Use Content Security Policy (CSP) and sanitize user inputs."
+                    "recommendation": "Use CSP and sanitize inputs."
                 })
                 print("  ❌ Vulnerability Found!")
 
-        except requests.exceptions.RequestException:
-            print("  ⚠️ Connection Error. Skipping payload.")
+        except requests.exceptions.RequestException as e:
+            print(f"  ⚠️ Request error: {e}")
 
     return vulnerabilities
+

@@ -1,37 +1,73 @@
 import requests
+from pymongo import MongoClient
+
+# MongoDB Atlas connection URI
+MONGO_URI = ""
+
+def get_csrf_payloads():
+    """
+    Fetch CSRF payloads from MongoDB Atlas.
+    """
+    try:
+        print("🔄 Connecting to MongoDB Atlas for CSRF payloads...")
+        client = MongoClient(MONGO_URI)
+        db = client["attack_payloads_v1"]
+        collection = db["csrf"]
+
+        cursor = collection.find({})
+        payloads = []
+
+        for doc in cursor:
+            if "payload" in doc:
+                payloads.append(doc["payload"])
+
+        print(f"✅ Retrieved {len(payloads)} CSRF payloads from MongoDB.\n")
+        return payloads
+
+    except Exception as e:
+        print(f"❌ Error fetching CSRF payloads: {e}")
+        return []
+
+    finally:
+        if 'client' in locals():
+            client.close()
+
 
 def test_csrf(url):
     """
-    Tests for CSRF vulnerability by attempting a sensitive action without authentication headers.
+    Tests for CSRF vulnerability by submitting CSRF payloads without authentication headers.
     """
-    test_url = f"{url}/change_password.php"  # Change this endpoint if needed
+    payloads = get_csrf_payloads()
+    vulnerabilities = []
 
-    data = {
-        "new_password": "hacked123",
-        "confirm_password": "hacked123"
-    }
-    
-    # Mimic a real browser request
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36",
-        "Referer": url  # Some CSRF protections check this
-    }
-
-    try:
-        print(f"🔍 Testing CSRF on {test_url} ...")
-        response = requests.post(test_url, data=data, headers=headers)
-
-        vulnerabilities = []
-        
-        if response.status_code == 200 and "Password changed successfully" in response.text:
-            vulnerabilities.append({
-                "type": "Cross-Site Request Forgery (CSRF)",
-                "payload": "CSRF request without authentication",
-                "recommendation": "Implement CSRF tokens, use SameSite cookies, and validate request origins."
-            })
-
+    if not payloads:
+        print("⚠️ No CSRF payloads found. Skipping CSRF test.\n")
         return vulnerabilities
 
-    except requests.exceptions.RequestException as e:
-        print(f"❌ Error: {e}")
-        return []
+    print("🔍 Testing CSRF using payloads...\n")
+
+    headers = {
+        "User-Agent": "Mozilla/5.0",
+        "Referer": url
+    }
+
+    for payload in payloads:
+        try:
+            print(f"  🔹 Sending CSRF payload to {url}/test_csrf_endpoint")
+
+            # You would need to simulate the effect of the payload on a test endpoint.
+            response = requests.post(f"{url}/test_csrf_endpoint", data={}, headers=headers)
+
+            # Simulate detection (this would depend on your app's response behavior)
+            if response.status_code == 200 and "Password changed successfully" in response.text:
+                vulnerabilities.append({
+                    "type": "Cross-Site Request Forgery (CSRF)",
+                    "payload": payload,
+                    "recommendation": "Implement CSRF tokens, SameSite cookies, and referer/origin validation."
+                })
+                print("  ❌ CSRF Vulnerability Detected!\n")
+
+        except requests.exceptions.RequestException as e:
+            print(f"  ⚠️ Request failed: {e}")
+
+    return vulnerabilities

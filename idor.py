@@ -1,28 +1,63 @@
 import requests
+from pymongo import MongoClient
+
+# MongoDB Atlas connection URI
+MONGO_URI = ""
+
+def get_idor_payloads():
+    """
+    Fetch IDOR test payloads from MongoDB Atlas.
+    """
+    try:
+        print("🔄 Connecting to MongoDB Atlas for IDOR payloads...")
+        client = MongoClient(MONGO_URI)
+        db = client["attack_payloads_v1"]
+        collection = db["idor"]
+
+        payloads = [doc["payload"] for doc in collection.find({}) if "payload" in doc]
+
+        print(f"✅ Retrieved {len(payloads)} IDOR payloads from MongoDB.\n")
+        return payloads
+
+    except Exception as e:
+        print(f"❌ Error fetching IDOR payloads: {e}")
+        return []
+
+    finally:
+        if 'client' in locals():
+            client.close()
 
 def test_idor(url):
     """
-    Tests for Insecure Direct Object References (IDOR)
-    by modifying numerical object IDs in the URL.
+    Test for Insecure Direct Object Reference (IDOR) vulnerabilities.
+    URL should include `{id}` as a placeholder for replacement.
+    Example: https://example.com/user/{id}/profile
     """
     vulnerabilities = []
-    test_ids = [1, 2, 999, 1000]  # Modify these based on expected ID range
+    test_ids = get_idor_payloads()
+
+    if not test_ids:
+        print("⚠️ No IDOR payloads found. Skipping IDOR test.\n")
+        return vulnerabilities
+
+    print("🔍 Testing for IDOR vulnerabilities...\n")
 
     for test_id in test_ids:
-        test_url = url.replace("{id}", str(test_id))  # Replace {id} in URL with test values
+        test_url = url.replace("{id}", str(test_id))
+
         try:
             response = requests.get(test_url, allow_redirects=False)
-            
-            # Check if the response indicates unauthorized access
-            if response.status_code != 403 and response.status_code != 401:
+
+            if response.status_code not in [401, 403]:
+                print(f"❌ Potential IDOR at: {test_url}")
                 vulnerabilities.append({
-                    "type": "Insecure Direct Object Reference (IDOR)",
+                    "type": "IDOR",
                     "payload": test_url,
-                    "recommendation": "Implement proper authorization checks before granting access to resources."
+                    "recommendation": "Implement proper authorization checks for resource access.",
+                    "severity": "High"
                 })
-        
+
         except requests.RequestException as e:
-            # Handle errors in requests
-            print(f"Error while testing IDOR for {test_url}: {e}")
-    
+            print(f"⚠️ Error while testing IDOR for {test_url}: {e}")
+
     return vulnerabilities

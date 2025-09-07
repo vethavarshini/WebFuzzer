@@ -1,38 +1,68 @@
 import requests
+from pymongo import MongoClient
 
-# Common weak username/password combinations
-weak_credentials = [
-    ("admin", "admin"),
-    ("admin", "password"),
-    ("root", "root"),
-    ("user", "user"),
-    ("test", "test"),
-    ("admin", "123456"),
-    ("admin", "admin123")
-]
+# MongoDB Atlas connection URI
+MONGO_URI = ""
+
+def get_authentication_payloads():
+    """
+    Fetch authentication bypass payloads (e.g., SQL login bypass, weak credentials) from MongoDB.
+    """
+    try:
+        print("🔄 Connecting to MongoDB Atlas for authentication payloads...")
+        client = MongoClient(MONGO_URI)
+        db = client["attack_payloads_v1"]
+        collection = db["broken_authentication"]
+
+        cursor = collection.find({})
+        payloads = []
+
+        for doc in cursor:
+            if "payload" in doc:
+                payloads.append(doc["payload"])
+
+        print(f"✅ Retrieved {len(payloads)} authentication payloads from MongoDB.\n")
+        return payloads
+
+    except Exception as e:
+        print(f"❌ Error fetching payloads: {e}")
+        return []
+
+    finally:
+        if 'client' in locals():
+            client.close()
 
 def test_broken_authentication(url):
+    """
+    Test for broken authentication vulnerabilities such as weak credentials and login bypass.
+    """
     vulnerabilities = []
-    login_url = f"{url}/login.php"  # Adjust based on the actual login page
+    login_url = f"{url}/login.php"  # Modify based on your actual login endpoint
 
-    print("🔍 Testing for Weak Authentication...")
+    print("🔍 Testing for Broken Authentication...")
 
-    for username, password in weak_credentials:
-        data = {"username": username, "password": password}
-        
+    payloads = get_authentication_payloads()
+    if not payloads:
+        print("⚠️ No authentication payloads found. Skipping test.")
+        return vulnerabilities
+
+    for payload in payloads:
+        # Assuming payloads are intended for username or password bypass
+        data = {"username": payload, "password": payload}
+
         try:
             session = requests.Session()
             response = session.post(login_url, data=data, timeout=5)
 
             if "incorrect" not in response.text.lower() and response.status_code == 200:
-                print(f"❌ Weak credentials found: {username}:{password}")
+                print(f"❌ Weak/Broken authentication bypassed with: {payload}")
                 vulnerabilities.append({
                     "type": "Broken Authentication",
-                    "payload": f"{username}:{password}",
-                    "recommendation": "Enforce strong password policies and implement account lockout mechanisms."
+                    "payload": payload,
+                    "recommendation": "Implement secure authentication logic, input sanitization, and account lockouts."
                 })
 
-            # Checking if session tokens change after login
+            # Session Fixation test
             session_token_before = session.cookies.get_dict()
             session.post(login_url, data=data)
             session_token_after = session.cookies.get_dict()
@@ -40,12 +70,12 @@ def test_broken_authentication(url):
             if session_token_before == session_token_after:
                 print("❌ Session Fixation detected!")
                 vulnerabilities.append({
-                    "type": "Broken Authentication",
-                    "payload": "Session Fixation",
-                    "recommendation": "Regenerate session tokens after login."
+                    "type": "Session Fixation",
+                    "payload": payload,
+                    "recommendation": "Regenerate session tokens after successful authentication."
                 })
 
         except requests.exceptions.RequestException:
-            print("⚠️ Connection error. Skipping this test.")
-    
+            print("⚠️ Connection error. Skipping this payload.")
+
     return vulnerabilities
