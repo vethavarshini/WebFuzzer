@@ -11,7 +11,7 @@ def get_directory_traversal_payloads():
     Fetch directory traversal payloads from MongoDB.
     """
     try:
-        print("🔄 Connecting to MongoDB Atlas for directory traversal payloads...")
+        print("Connecting to MongoDB Atlas for directory traversal payloads...")
         client = MongoClient(MONGO_URI)
         db = client["attack_payloads_v1"]
         collection = db["directory_traversal"]  # Make sure this collection exists
@@ -23,11 +23,11 @@ def get_directory_traversal_payloads():
             if "payload" in doc:
                 payloads.append(doc["payload"])
 
-        print(f"✅ Retrieved {len(payloads)} traversal payloads from MongoDB.\n")
+        print(f"Retrieved {len(payloads)} traversal payloads from MongoDB.\n")
         return payloads
 
     except Exception as e:
-        print(f"❌ Error fetching traversal payloads: {e}")
+        print(f"Error fetching traversal payloads: {e}")
         return []
 
     finally:
@@ -42,20 +42,20 @@ def test_directory_traversal(url):
     vulnerabilities = []
 
     if not traversal_payloads:
-        print("⚠️ No directory traversal payloads found. Skipping test.\n")
+        print("No directory traversal payloads found. Skipping test.\n")
         return vulnerabilities
 
-    print("🔍 Testing for Directory Traversal vulnerabilities...\n")
+    print("Testing for Directory Traversal vulnerabilities...\n")
 
     for payload in traversal_payloads:
         test_url = f"{url}?file={payload}"  # Adjust based on parameter name
-        print(f"  🔹 Testing payload: {payload}")
+        print(f"  Testing payload: {payload}")
 
         try:
             response = requests.get(test_url, timeout=5)
 
             if "root:" in response.text or "NT AUTHORITY" in response.text:
-                print("  ❌ Vulnerability Found!")
+                print("  Vulnerability Found!")
                 vulnerabilities.append({
                     "type": "Directory Traversal",
                     "payload": payload,
@@ -63,6 +63,6 @@ def test_directory_traversal(url):
                 })
 
         except requests.exceptions.RequestException:
-            print("  ⚠️ Connection Error. Skipping payload.")
+            print("  Connection Error. Skipping payload.")
 
     return vulnerabilities

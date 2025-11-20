@@ -1,3 +1,6 @@
 pymongo
 python-Wappalyzer
 setuptools
+flask
+requests
+python-dotenv

@@ -11,7 +11,7 @@ def get_csrf_payloads():
     Fetch CSRF payloads from MongoDB Atlas.
     """
     try:
-        print("🔄 Connecting to MongoDB Atlas for CSRF payloads...")
+        print("Connecting to MongoDB Atlas for CSRF payloads...")
         client = MongoClient(MONGO_URI)
         db = client["attack_payloads_v1"]
         collection = db["csrf"]
@@ -23,11 +23,11 @@ def get_csrf_payloads():
             if "payload" in doc:
                 payloads.append(doc["payload"])
 
-        print(f"✅ Retrieved {len(payloads)} CSRF payloads from MongoDB.\n")
+        print(f"Retrieved {len(payloads)} CSRF payloads from MongoDB.\n")
         return payloads
 
     except Exception as e:
-        print(f"❌ Error fetching CSRF payloads: {e}")
+        print(f"Error fetching CSRF payloads: {e}")
         return []
 
     finally:
@@ -43,10 +43,10 @@ def test_csrf(url):
     vulnerabilities = []
 
     if not payloads:
-        print("⚠️ No CSRF payloads found. Skipping CSRF test.\n")
+        print("No CSRF payloads found. Skipping CSRF test.\n")
         return vulnerabilities
 
-    print("🔍 Testing CSRF using payloads...\n")
+    print("Testing CSRF using payloads...\n")
 
     headers = {
         "User-Agent": "Mozilla/5.0",
@@ -55,7 +55,7 @@ def test_csrf(url):
 
     for payload in payloads:
         try:
-            print(f"  🔹 Sending CSRF payload to {url}/test_csrf_endpoint")
+            print(f"  Sending CSRF payload to {url}/test_csrf_endpoint")
 
             # You would need to simulate the effect of the payload on a test endpoint.
             response = requests.post(f"{url}/test_csrf_endpoint", data={}, headers=headers)
@@ -67,9 +67,9 @@ def test_csrf(url):
                     "payload": payload,
                     "recommendation": "Implement CSRF tokens, SameSite cookies, and referer/origin validation."
                 })
-                print("  ❌ CSRF Vulnerability Detected!\n")
+                print("  CSRF Vulnerability Detected!\n")
 
         except requests.exceptions.RequestException as e:
-            print(f"  ⚠️ Request failed: {e}")
+            print(f"  Request failed: {e}")
 
     return vulnerabilities

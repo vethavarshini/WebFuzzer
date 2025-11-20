@@ -10,30 +10,47 @@ import insecurefileupload
 import csrf
 import idor
 import multipleloginattempts
+import json
+import os
 
 def main():
-    print("\n===============================")
-    print("     Welcome to Web Fuzzer      ")
-    print("===============================\n")
+    # Check if we're running from web interface
+    if os.path.exists('web_input.json'):
+        # Load input from web interface
+        with open('web_input.json', 'r') as f:
+            data = json.load(f)
+            name = data.get('name', 'Web User')
+            url = data.get('url').rstrip("/")
+        # Clean up the input file
+        os.remove('web_input.json')
+    else:
+        # Original terminal interface
+        print("\n===============================")
+        print("     Welcome to Web Fuzzer      ")
+        print("===============================\n")
+        
+        name = input("Enter your name: ")
+        url = input("Enter the website URL to test (e.g., http://example.com): ").rstrip("/")
 
-    name = input("Enter your name: ")
-    url = input("Enter the website URL to test (e.g., http://example.com): ").rstrip("/")
-
-
-    print(f"\n🌐 Starting security tests on {url}...\n")
+    print(f"\nStarting security tests on {url}...\n")
     vulnerabilities = []
+    
+    # Initialize tech stack and CVE data variables
+    tech_stack_info = {}
+    cve_findings = {}
 
     # --- Tech Stack Identification and Vulnerability Mapping ---
-    print("\n🔎 Identifying technology stack and mapping vulnerabilities...")
+    print("\nIdentifying technology stack and mapping vulnerabilities...")
     from Wappalyzer import Wappalyzer, WebPage
     import threat_intel
-    import json
 
     try:
         wappalyzer = Wappalyzer.latest()
         webpage = WebPage.new_from_url(url)
         tech_info = wappalyzer.analyze_with_versions_and_categories(webpage)
-        print("\n🔎 Detected tech stack:")
+        tech_stack_info = tech_info  # Store for report
+        
+        print("\nDetected tech stack:")
         print(json.dumps(tech_info, indent=2))
 
         def extract_tech_versions(tech_info):
@@ -53,10 +70,14 @@ def main():
             vulns = threat_intel.get_nvd_cves(vendor, product, version)
             all_vulns[f"{vendor}/{product} {version or ''}".strip()] = vulns
 
-        print("\n\U0001F4C8 Vulnerabilities mapped to tech stack:")
+        cve_findings = all_vulns  # Store for report
+        
+        print("\nVulnerabilities mapped to tech stack:")
         print(json.dumps(all_vulns, indent=2))
     except Exception as e:
         print(f"[!] Tech stack identification failed: {e}")
+        tech_stack_info = {}
+        cve_findings = {}
 
     # SQL Injection
     print("Testing for SQL Injection...")
@@ -124,15 +145,18 @@ def main():
     print(f"IDOR Test Completed. Found {len(idor_vulns)} vulnerabilities.\n")
 
     # Multiple Login Attempts
-    print("🔍 Testing for Multiple Login Attempts (Brute Force)...")
+    print("Testing for Multiple Login Attempts (Brute Force)...")
     login_vulns = multipleloginattempts.test_multiple_login_attempts(url)
     vulnerabilities.extend(login_vulns)
-    print(f"✅ Multiple Login Attempts Test Completed. Found {len(login_vulns)} vulnerabilities.\n")
+    print(f"Multiple Login Attempts Test Completed. Found {len(login_vulns)} vulnerabilities.\n")
 
     # Report Generation
-    print("📄 Generating Report...")
-    reportgeneration.generate_report(name, url, vulnerabilities)
-    print("✅ Security scan complete. Report saved as 'report.html'.\n")
+    print("Generating Report...")
+    reportgeneration.generate_report(name, url, vulnerabilities, tech_stack_info, cve_findings)
+    print("Security scan complete. Report saved as 'report.html'.\n")
 
 if __name__ == "__main__":
+    # Set environment variable for Unicode handling
+    import os
+    os.environ['PYTHONIOENCODING'] = 'utf-8:replace'
     main()

@@ -13,7 +13,7 @@ def get_sensitive_patterns():
     Filters by category: 'Sensitive Data'.
     """
     try:
-        print("🔄 Connecting to MongoDB Atlas for sensitive data patterns...")
+        print("Connecting to MongoDB Atlas for sensitive data patterns...")
         client = MongoClient(MONGO_URI)
         db = client["attack_payloads_v1"]
         collection = db["sensitive_data_exposure"]
@@ -21,11 +21,11 @@ def get_sensitive_patterns():
         cursor = collection.find({"category": "Sensitive Data"})
         patterns = {doc["name"]: doc["pattern"] for doc in cursor if "name" in doc and "pattern" in doc}
 
-        print(f"✅ Retrieved {len(patterns)} sensitive data patterns.\n")
+        print(f"Retrieved {len(patterns)} sensitive data patterns.\n")
         return patterns
 
     except Exception as e:
-        print(f"❌ Error fetching patterns: {e}")
+        print(f"Error fetching patterns: {e}")
         return {}
 
     finally:
@@ -40,10 +40,10 @@ def test_sensitive_data_exposure(url):
     vulnerabilities = []
     patterns = get_sensitive_patterns()
 
-    print("🔍 Testing for Sensitive Data Exposure...\n")
+    print("Testing for Sensitive Data Exposure...\n")
 
     if not patterns:
-        print("⚠️ No sensitive data patterns found. Skipping test.\n")
+        print("No sensitive data patterns found. Skipping test.\n")
         return vulnerabilities
 
     try:
@@ -53,7 +53,7 @@ def test_sensitive_data_exposure(url):
         for name, pattern in patterns.items():
             matches = re.findall(pattern, content)
             if matches:
-                print(f"❌ {name} found: {matches[:3]} (Showing first 3 matches)")
+                print(f"{name} found: {matches[:3]} (Showing first 3 matches)")
                 vulnerabilities.append({
                     "type": "Sensitive Data Exposure",
                     "payload": f"{name} - {matches[:3]}",
@@ -61,6 +61,6 @@ def test_sensitive_data_exposure(url):
                 })
 
     except requests.exceptions.RequestException as e:
-        print(f"⚠️ Request failed: {e}")
+        print(f"Request failed: {e}")
 
     return vulnerabilities

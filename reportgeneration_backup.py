@@ -3,64 +3,6 @@ def generate_report(user, url, vulnerabilities, tech_stack_info=None, cve_findin
 
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    # Generate tech stack section
-    tech_stack_section = ""
-    if tech_stack_info:
-        tech_stack_section = "<h5><i class='fas fa-cogs'></i> Detected Technologies</h5><div class='row'>"
-        for tech, details in tech_stack_info.items():
-            versions = details.get('versions', ['Unknown version'])
-            categories = details.get('categories', ['Unknown category'])
-            version_str = ', '.join(versions) if versions else 'Unknown version'
-            category_str = ', '.join(categories) if categories else 'Unknown category'
-            tech_stack_section += f"""
-            <div class="col-md-4 mb-3">
-                <div class="card border-primary">
-                    <div class="card-body">
-                        <h6 class="card-title text-primary"><i class="fas fa-puzzle-piece"></i> {tech}</h6>
-                        <p class="card-text small"><strong>Version:</strong> {version_str}</p>
-                        <p class="card-text small"><strong>Category:</strong> {category_str}</p>
-                    </div>
-                </div>
-            </div>
-            """
-        tech_stack_section += "</div>"
-    else:
-        tech_stack_section = "<p class='text-muted'><i class='fas fa-info-circle'></i> No technology stack information available.</p>"
-
-    # Generate CVE section
-    cve_section = ""
-    if cve_findings:
-        cve_section = "<h5><i class='fas fa-exclamation-triangle'></i> Known CVEs for Detected Technologies</h5>"
-        total_cves = sum(len(cves) for cves in cve_findings.values())
-        if total_cves > 0:
-            cve_section += f"<div class='alert alert-warning'><i class='fas fa-shield-alt'></i> Found <strong>{total_cves}</strong> potential CVEs across detected technologies.</div>"
-            for tech, cves in cve_findings.items():
-                if cves:
-                    cve_section += f"<div class='mb-3'><h6 class='text-danger'><i class='fas fa-server'></i> {tech}</h6><ul class='list-group'>"
-                    for cve in cves[:3]:  # Show top 3 CVEs per technology
-                        summary = cve.get('summary', 'No description available')
-                        if len(summary) > 200:
-                            summary = summary[:200] + "..."
-                        first_ref = cve.get('references', [''])[0] if cve.get('references') else '#'
-                        cve_section += f"""
-                        <li class="list-group-item">
-                            <div class="d-flex justify-content-between align-items-start">
-                                <div>
-                                    <strong class="text-danger">{cve.get('id', 'Unknown')}</strong>
-                                    <p class="mb-1 small">{summary}</p>
-                                    <small><a href="{first_ref}" target="_blank" class="text-decoration-none">View Details</a></small>
-                                </div>
-                            </div>
-                        </li>
-                        """
-                    if len(cves) > 3:
-                        cve_section += f"<li class='list-group-item text-muted'><i class='fas fa-ellipsis-h'></i> ...and {len(cves) - 3} more CVEs</li>"
-                    cve_section += "</ul></div>"
-        else:
-            cve_section += "<div class='alert alert-success'><i class='fas fa-check-circle'></i> No known CVEs found for detected technologies.</div>"
-    else:
-        cve_section = "<p class='text-muted'><i class='fas fa-info-circle'></i> CVE analysis not available.</p>"
-
     with open("report.html", "w", encoding="utf-8") as report:
         report.write(f"""
         <!DOCTYPE html>
@@ -148,22 +90,76 @@ def generate_report(user, url, vulnerabilities, tech_stack_info=None, cve_findin
                 </div>
                 <input type="text" id="searchInput" class="form-control my-3" placeholder="Search payloads...">
 
-                <h2 class="mt-4 section-header">🔧 Technology Stack Detected</h2>
-                <div class="card mb-4">
-                    <div class="card-body">
-                        {tech_stack_section}
+                <h2 class=\"mt-4 section-header\">\ud83d\udd27 Technology Stack Detected</h2>
+                <div class=\"card mb-4\">
+                    <div class=\"card-body\">
+                        """ + "{tech_stack_section}" + """
                     </div>
                 </div>
 
-                <h2 class="mt-4 section-header">🚨 CVE Threat Intelligence</h2>
-                <div class="card mb-4">
-                    <div class="card-body">
-                        {cve_section}
+                <h2 class=\"mt-4 section-header\">\ud83d\udea8 CVE Threat Intelligence</h2>
+                <div class=\"card mb-4\">
+                    <div class=\"card-body\">
+                        """ + "{cve_section}" + """
                     </div>
                 </div>
 
-                <h2 class="mt-4 section-header">🛡️ Vulnerabilities Found</h2>
+                <h2 class=\"mt-4 section-header\">\ud83d\udee1\ufe0f Vulnerabilities Found</h2>
         """)
+
+        # Generate tech stack section
+        tech_stack_section = ""
+        if tech_stack_info:
+            tech_stack_section = "<h5><i class='fas fa-cogs'></i> Detected Technologies</h5><div class='row'>"
+            for tech, details in tech_stack_info.items():
+                versions = details.get('versions', ['Unknown version'])
+                categories = details.get('categories', ['Unknown category'])
+                version_str = ', '.join(versions) if versions else 'Unknown version'
+                category_str = ', '.join(categories) if categories else 'Unknown category'
+                tech_stack_section += f"""
+                <div class="col-md-4 mb-3">
+                    <div class="card border-primary">
+                        <div class="card-body">
+                            <h6 class="card-title text-primary"><i class="fas fa-puzzle-piece"></i> {tech}</h6>
+                            <p class="card-text small"><strong>Version:</strong> {version_str}</p>
+                            <p class="card-text small"><strong>Category:</strong> {category_str}</p>
+                        </div>
+                    </div>
+                </div>
+                """
+            tech_stack_section += "</div>"
+        else:
+            tech_stack_section = "<p class='text-muted'><i class='fas fa-info-circle'></i> No technology stack information available.</p>"
+
+        # Generate CVE section
+        cve_section = ""
+        if cve_findings:
+            cve_section = "<h5><i class='fas fa-exclamation-triangle'></i> Known CVEs for Detected Technologies</h5>"
+            total_cves = sum(len(cves) for cves in cve_findings.values())
+            if total_cves > 0:
+                cve_section += f"<div class='alert alert-warning'><i class='fas fa-shield-alt'></i> Found <strong>{total_cves}</strong> potential CVEs across detected technologies.</div>"
+                for tech, cves in cve_findings.items():
+                    if cves:
+                        cve_section += f"<div class='mb-3'><h6 class='text-danger'><i class='fas fa-server'></i> {tech}</h6><ul class='list-group'>"
+                        for cve in cves[:3]:  # Show top 3 CVEs per technology
+                            cve_section += f"""
+                            <li class="list-group-item">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <strong class="text-danger">{cve.get('id', 'Unknown')}</strong>
+                                        <p class="mb-1 small">{cve.get('summary', 'No description available')[:200]}...</p>
+                                        <small><a href="{cve.get('references', [''])[0] if cve.get('references') else '#'}" target="_blank" class="text-decoration-none">View Details</a></small>
+                                    </div>
+                                </div>
+                            </li>
+                            """
+                        if len(cves) > 3:
+                            cve_section += f"<li class='list-group-item text-muted'><i class='fas fa-ellipsis-h'></i> ...and {len(cves) - 3} more CVEs</li>"
+                        cve_section += "</ul></div>"
+            else:
+                cve_section += "<div class='alert alert-success'><i class='fas fa-check-circle'></i> No known CVEs found for detected technologies.</div>"
+        else:
+            cve_section = "<p class='text-muted'><i class='fas fa-info-circle'></i> CVE analysis not available.</p>"
 
         categories = {
             "SQL Injection": [],
@@ -230,7 +226,7 @@ def generate_report(user, url, vulnerabilities, tech_stack_info=None, cve_findin
             report.write("<div class='alert alert-success'>No vulnerabilities found!</div>")
 
         report.write("""
-            <h2 class="mt-5 section-header">🔐 General Security Solutions</h2>
+            <h2 class="mt-5 section-header">General Security Solutions</h2>
             <ul class="list-group mb-5">
                 <li class="list-group-item"><b>SQL Injection:</b> Use parameterized queries and ORM frameworks.</li>
                 <li class="list-group-item"><b>XSS:</b> Sanitize input and use Content Security Policy (CSP).</li>

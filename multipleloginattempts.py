@@ -16,7 +16,7 @@ def test_multiple_login_attempts(base_url):
     """
     vulnerabilities = []
 
-    print("🔐 Testing for brute-force login protections...\n")
+    print("Testing for brute-force login protections...\n")
 
     for attempt in range(MAX_ATTEMPTS + 2):  # Extra attempts to check for blocking
         try:
@@ -25,7 +25,7 @@ def test_multiple_login_attempts(base_url):
             response = requests.post(full_url, data=LOGIN_PAYLOAD)
 
             # Log each attempt
-            print(f"  🔁 Attempt {attempt + 1}: Status Code = {response.status_code}")
+            print(f"  Attempt {attempt + 1}: Status Code = {response.status_code}")
 
             # Small delay to simulate realistic brute-force pace
             time.sleep(1)
@@ -52,10 +52,10 @@ def test_multiple_login_attempts(base_url):
                 })
 
         except requests.exceptions.RequestException as e:
-            print(f"  ⚠️ Error during attempt {attempt + 1}: {e}")
+            print(f"  Error during attempt {attempt + 1}: {e}")
             time.sleep(2)
 
     if not vulnerabilities:
-        print("✅ No brute-force vulnerability detected.\n")
+        print("No brute-force vulnerability detected.\n")
 
     return vulnerabilities
